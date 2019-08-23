@@ -25,18 +25,20 @@ function generateMethod({ name, argumentType, returnType, description }: Method)
 		requestParameter = '';
 	}
 
+	const fetchFunction = name.match(/^(get|find)/) ? 'get' : 'post';
+
 	return `/**
  * ${description}
  */
 export function ${name}(${requestParameter}): Promise<${returnType.replace(/^messages\./, 'MessageTypes.')}> {
-	return callMethod('${name}'${requestParameter && ', request'});
+	return ${fetchFunction}('${name}'${requestParameter && ', request'});
 }`;
 }
 
 async function generate() {
 	const methods = await fetchMethods();
 	const generatedMethods = methods.map(method => generateMethod(method)).join('\n\n');
-	return `import callMethod from './callMethod';
+	return `import { get, post } from './callMethod';
 import * as MessageTypes from './MessageTypes';
 
 ${generatedMethods}`;

@@ -18,10 +18,11 @@ const config = {
 	project: 'kialo',
 };
 
-export default async function callMethod(methodName: string, request?: any): Promise<any> {
+export async function callMethod(upsourceMethodName: string, httpMethod: string, request?: any): Promise<any> {
 	const queryParams = request ? `?params=${encodeURIComponent(JSON.stringify(request))}` : '';
-	const response = await fetch(`${config.url}/~rpc/${methodName}${queryParams}`, {
+	const response = await fetch(`${config.url}/~rpc/${upsourceMethodName}${queryParams}`, {
 		headers: { Authorization: config.auth },
+		method: httpMethod,
 	});
 	const parsed = await response.json();
 	if (parsed.error) {
@@ -29,4 +30,12 @@ export default async function callMethod(methodName: string, request?: any): Pro
 	} else {
 		return parsed.result;
 	}
+}
+
+export function post(upsourceMethodName: string, request?: any): Promise<any> {
+	return callMethod(upsourceMethodName, 'POST', request);
+}
+
+export function get(upsourceMethodName: string, request?: any): Promise<any> {
+	return callMethod(upsourceMethodName, 'GET', request);
 }
