@@ -25,23 +25,36 @@ function generateMethod({ name, argumentType, returnType, description }: Method)
 		requestParameter = '';
 	}
 
-	const fetchFunction = name.match(/^(get|find)/) ? 'get' : 'post';
+	const fetchMethod = name.match(/^(get|find)/) ? 'get' : 'post';
 
 	return `/**
  * ${description}
  */
-export function ${name}(${requestParameter}): Promise<${returnType.replace(/^messages\./, 'MessageTypes.')}> {
-	return ${fetchFunction}('${name}'${requestParameter && ', request'});
+public ${name}(${requestParameter}): Promise<${returnType.replace(/^messages\./, 'MessageTypes.')}> {
+	return this.${fetchMethod}('${name}'${requestParameter && ', request'});
 }`;
 }
 
 async function generate() {
 	const methods = await fetchMethods();
-	const generatedMethods = methods.map(method => generateMethod(method)).join('\n\n');
-	return `import { get, post } from './callMethod';
+	const generatedMethods = methods
+		.map(method =>
+			generateMethod(method)
+				.split('\n')
+				.map(line => '\t' + line)
+				.join('\n')
+		)
+		.join('\n\n');
+	return `/**
+ * This file is generated using 'yarn generate'.
+ */
+
+import BaseApi from './BaseApi';
 import * as MessageTypes from './MessageTypes';
 
-${generatedMethods}`;
+export default class UpsourceApi extends BaseApi {
+${generatedMethods}
+}`;
 }
 
 generate().then(console.log);

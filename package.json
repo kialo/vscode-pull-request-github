@@ -702,7 +702,8 @@
     "compile": "tsc -p ./",
     "clean": "rm -r out/ media/ preview-src/dist/",
     "watch": "webpack --watch --env.development",
-    "test": "./test.sh"
+    "test": "./test.sh",
+    "generate": "ts-node ./scripts/generate-api.ts > ./src/upsource/UpsourceApi.ts && ts-node ./scripts/generate-message-types.ts > ./src/upsource/MessageTypes.ts"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",

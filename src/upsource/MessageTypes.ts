@@ -1,4 +1,8 @@
 /**
+* This file is generated using 'yarn generate'.
+*/
+
+/**
  * Describes analyzer problem severity
  */
 export enum AnalyzerProblemSeverityEnum {

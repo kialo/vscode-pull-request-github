@@ -30,7 +30,7 @@ const systemKeychain = getNodeModule<Keytar>('keytar') || failingKeytar;
 
 export type GlobalStateContext = { globalState: vscode.Memento };
 
-const SERVICE_ID = 'vscode-pull-request-github';
+const SERVICE_ID = 'vscode-upsource';
 export const ALL_HOSTS_KEY = 'keychain::all';
 
 let defaultStorage: vscode.Memento | undefined = undefined;

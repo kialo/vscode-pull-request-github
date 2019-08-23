@@ -129,6 +129,11 @@ collect().then(({ messages, enums }) => {
 		.map(en => en.code)
 		.join('\n\n');
 
-	console.log(enumCode + '\n');
-	console.log(messageTypeCode);
+	console.log(`/**
+* This file is generated using 'yarn generate'.
+*/
+
+${enumCode}
+
+${messageTypeCode}`);
 });
