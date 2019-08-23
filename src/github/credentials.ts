@@ -17,6 +17,7 @@ import { handler as uriHandler } from '../common/uri';
 import { createHttpLink } from 'apollo-link-http';
 import fetch from 'node-fetch';
 import { ITelemetry } from '../common/telemetry';
+import UpsourceApi from '../upsource/UpsourceApi';
 
 const TRY_AGAIN = 'Try again?';
 const SIGNIN_COMMAND = 'Sign in';
@@ -91,6 +92,23 @@ export class CredentialStore implements vscode.Disposable {
 		return this._octokits.has(host);
 	}
 
+	public async hasAuthenticationForUpsourceHost(host: string): Promise<boolean> {
+		const hostToken = await getToken(host);
+		if (!hostToken) {
+			return false;
+		}
+
+		const api = new UpsourceApi(host, hostToken);
+		try {
+			// Test connection
+			await api.getAllProjects({ projectId: [] });
+		} catch (e) {
+			return false;
+		}
+
+		return true;
+	}
+
 	public getHub(remote: Remote): GitHub | undefined {
 		const normalizedUri = remote.gitProtocol.normalizeUri()!;
 		const host = `${normalizedUri.scheme}://${normalizedUri.authority}`;
@@ -105,6 +123,80 @@ export class CredentialStore implements vscode.Disposable {
 	public getGraphQL(remote: Remote) {
 		const hub = this.getHub(remote);
 		return hub && hub.graphql;
+	}
+
+	public async loginToUpsource(upsourceHost?: string): Promise<{ upsourceHost: string, username: string } | undefined> {
+		const result = await vscode.window.showInformationMessage(`In order to use Upsource functionality, you must sign in.`, SIGNIN_COMMAND);
+		if (result === SIGNIN_COMMAND) {
+			let retry: boolean = true;
+
+			let loginResult: { upsourceHost: string, username: string } | undefined;
+			while (retry) {
+				try {
+					loginResult = await this.upsourceLogin(upsourceHost);
+					vscode.window.showInformationMessage(`You are now signed in to ${loginResult.upsourceHost} as ${loginResult.username}`);
+				} catch (e) {
+					Logger.appendLine(`Error signing in to upsource: ${e}`);
+					if (e instanceof Error && e.stack) {
+						Logger.appendLine(e.stack);
+					}
+				} finally {
+					// this.didEndLogin(loginResult!.upsourceHost);
+				}
+
+				Logger.debug('Login result: ' + JSON.stringify(loginResult), 'Authentication');
+				if (loginResult) {
+					retry = false;
+				} else {
+					Logger.debug('Showing error message', 'Authentication');
+					retry = (await vscode.window.showErrorMessage(`Error signing in to upsource`, TRY_AGAIN)) === TRY_AGAIN;
+				}
+			}
+
+			return loginResult!;
+		}
+	}
+
+	public async upsourceLogin(upsourceHost?: string): Promise<{ upsourceHost: string, username: string }> {
+		const getCancellationToken = () => new vscode.CancellationTokenSource().token;
+		let cancellationToken = getCancellationToken();
+		upsourceHost = upsourceHost || await vscode.window.showInputBox({
+			value: 'https://upsource.jetbrains.com',
+			prompt: 'Please enter the URL of your Upsource server.',
+		}, cancellationToken);
+
+		if (cancellationToken.isCancellationRequested || !upsourceHost) {
+			throw new Error('Did not enter Upsource URL.');
+		}
+
+		cancellationToken = getCancellationToken();
+		const username = await vscode.window.showInputBox({
+			prompt: 'Please enter your Upsource username.',
+			placeHolder: 'you@company.com'
+		}, cancellationToken);
+
+		if (cancellationToken.isCancellationRequested || !username) {
+			throw new Error('Did not enter username.');
+		}
+
+		cancellationToken = getCancellationToken();
+		const password = await vscode.window.showInputBox({
+			prompt: 'Please enter your Upsource password.',
+			placeHolder: 'Password',
+			password: true,
+		}, cancellationToken);
+
+		if (cancellationToken.isCancellationRequested || !password) {
+			throw new Error('Did not enter password.');
+		}
+
+		const encoded = Buffer.from(`${username}:${password}`).toString('base64');
+		await setToken(upsourceHost, encoded);
+		const api = new UpsourceApi(upsourceHost, encoded);
+
+		await api.getAllProjects({ projectId: [] });
+
+		return { upsourceHost, username };
 	}
 
 	public async loginWithConfirmation(remote: Remote): Promise<GitHub | undefined> {

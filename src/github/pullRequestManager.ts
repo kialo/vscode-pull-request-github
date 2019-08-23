@@ -24,6 +24,7 @@ import { convertRESTPullRequestToRawPullRequest, convertPullRequestsGetCommentsR
 import { PendingReviewIdResponse, TimelineEventsResponse, PullRequestCommentsResponse, AddCommentResponse, SubmitReviewResponse, DeleteReviewResponse, EditCommentResponse, DeleteReactionResponse, AddReactionResponse, MarkPullRequestReadyForReviewResponse } from './graphql';
 import { ITelemetry } from '../common/telemetry';
 import { ApiImpl } from '../api/api1';
+import { listHosts } from '../authentication/keychain';
 const queries = require('./queries.gql');
 
 interface PageInformation {
@@ -167,13 +168,22 @@ export class PullRequestManager implements vscode.Disposable {
 
 	// Check if the remotes are authenticated and show a prompt if not, but don't block on user's response
 	private async showLoginPrompt(): Promise<void> {
-		const activeRemotes = await this.getActiveRemotes();
-		for (let server of uniqBy(activeRemotes, remote => remote.gitProtocol.normalizeUri()!.authority)) {
-			this._credentialStore.hasOctokit(server).then(authd => {
-				if (!authd) {
-					this._credentialStore.loginWithConfirmation(server);
-				}
-			});
+		Logger.debug('showLoginPrompt', 'PullRequestManager');
+		// TODO: Find a better place to store hosts.
+		// For now, filter out github
+		const hosts = (await listHosts()).filter(host => !host.match(/github\.com/));
+		Logger.debug('Hosts: ' + hosts, 'PullRequestManager');
+		if (hosts.length) {
+			hosts
+				.map(host => `https://${host}`)
+				.forEach(async (host) => {
+					const hasAuth = await this._credentialStore.hasAuthenticationForUpsourceHost(host);
+					if (!hasAuth) {
+						this._credentialStore.loginToUpsource(host);
+					}
+				});
+		} else {
+			this.credentialStore.loginToUpsource();
 		}
 
 		return Promise.resolve();
