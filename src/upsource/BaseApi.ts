@@ -36,11 +36,11 @@ export default class BaseApi {
 		}
 	}
 
-	protected async post(upsourceMethodName: string, request?: any): Promise<any> {
+	protected post(upsourceMethodName: string, request?: any): Promise<any> {
 		return this.callMethod(upsourceMethodName, 'POST', request);
 	}
 
-	protected async get(upsourceMethodName: string, request?: any): Promise<any> {
+	protected get(upsourceMethodName: string, request?: any): Promise<any> {
 		return this.callMethod(upsourceMethodName, 'GET', request);
 	}
 }
